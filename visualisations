@@ -1,0 +1,30 @@
+# INITIAL VISUALIZATION OF DATA
+
+```{r}
+#Boxplot of age and LDL 
+ggplot(LDL, aes(LDL, age, color = fastfood)) + geom_boxplot()
+
+#Boxplot of LDL and gender
+ggplot(LDL, aes(LDL, gender)) + geom_boxplot(color = "red")
+
+#Boxplot of age and gender
+ggplot(LDL, aes(age, gender)) + geom_boxplot(color = "dark green")
+
+#Boxplot of LDL and fastfood 
+ggplot(LDL, aes(LDL, fastfood)) + geom_boxplot(color = 'blue')
+
+#Boxplot of age and LDL coloured for fastfood
+ggplot(LDL, aes(LDL, age, color = fastfood)) + geom_boxplot()
+
+#Boxplot of age and fastfood coloured for gender
+ggplot(LDL, aes(age, fastfood, color = gender)) + geom_boxplot()
+```
+
+```{r}
+# boxplot and scatter plot of LDL & age with two different gender shown
+# ggplot(LDL, aes(fastfood, LDL, color = gender)) + geom_boxplot()
+ggplot(LDL, aes(age, LDL, color = gender)) + geom_point()
+# boxplot and scatter plot of LDL & age with two different fastfood consumption shown
+# ggplot(LDL, aes(age, LDL, color = fastfood)) + geom_boxplot()
+ggplot(LDL, aes(age, LDL, color = fastfood)) + geom_point()
+```
