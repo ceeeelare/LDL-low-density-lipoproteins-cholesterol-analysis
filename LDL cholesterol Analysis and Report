@@ -1,0 +1,348 @@
+---
+title: "LDL cholesterol Analysis and Report" 
+author: "Clare Hayes"
+date: "2020"
+output:
+  pdf_document: default
+  html_document:
+    df_print: paged
+fontsize: 14pt
+mainfont: Arial
+header-includes: \usepackage{amsmath}
+always_allow_html: true
+---
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = TRUE)
+library(tidyverse)
+library(dummies)
+library(plotly)
+library(EnvStats)
+```
+
+# INTRODUCTION
+
+LDL (low-density lipoproteins) is a type of cholesterol that is 
+known to be associated with increased risk of cardiovascular disease. 
+The study objective was to investigate the effect of  diet and fastfood 
+consumption on LDL blood levels, in consideration of age and gender factors.
+
+```{r, include=FALSE}
+# First set your working directory
+setwd("/Users/totomino/Google Drive/The wooden box/Statistics & Data Science/Linear+Model/Project+Assignment")
+# read the data
+load("LDL.RData")
+str(LDL)
+```
+
+# I. RESULT (for other statisticians)
+
+There are a total of forty subjects in the data. Twenty subjects that reported regular 
+fastfood comsumption were selected, as well as 20 subjects that reported to only 
+rarely eat fastfood. All subjects gave their consent for the use of their data in this study. 
+The null hypothesis is that there is no difference in LDL blood levels between 'often' and 
+'rarely' in the fastfood consumption group. All hypothesis tests were performed at the 5\% level 
+of significance. Confidence intervals were reported at the 95\% confidence level.
+
+# DATA EXPLORATION
+
+```{r}
+# OVERVIEW OF THE DATA
+# check to see if any missing data: is.na(LDL)
+head(LDL)
+summary(LDL)
+glimpse(LDL)
+```
+
+Even though it seems an increased number of men consume fast-food more often than women, 
+the Chi-squared test was performed with a p-value of 0.05653, which suggests no 
+association between gender and fast-food consumption (the diet is independent of gender).
+
+```{r}
+# CATEGORICAL VARIABLES
+# GENDER AND FASTFOOD CONSUMPTION
+table1 <- table(LDL$gender,LDL$fastfood)
+table1
+# chi-squared test for independence of factors
+summary(table1)
+```
+
+Even though it seems an increased number of men consume fast-food more often than women, 
+the Chi-squared test was performed with a p-value of 0.05653, which suggests no association 
+between gender and fast-food consumption (the diet is independent of gender).
+
+```{r}
+# NUMERICAL VARIABLES
+summary(LDL$LDL)
+summary(LDL$age)
+# The average LDL grouped by gender and fast-food consumption
+tapply(LDL$LDL,LDL$fastfood,summary)
+tapply(LDL$LDL,LDL$gender,summary)
+```
+
+```{r}
+# t-test to compare LDL blood levels in male and female
+t.test(LDL$LDL ~ LDL$gender)
+# t-test to compare LDL blood levels in rarely and often fastfood consumption
+t.test(LDL$LDL ~ LDL$fastfood)
+```
+
+For the LDL blood levels, there is no significant different between male and female, 
+neither between the rarely fastfood consumption and the often fastfood consumption (p=0.4418 and 0.4155, respectively).
+
+# INITIAL VISUALIZATION OF DATA
+
+```{r}
+#Boxplot of age and LDL 
+ggplot(LDL, aes(LDL, age, color = fastfood)) + geom_boxplot()
+
+#Boxplot of LDL and gender
+ggplot(LDL, aes(LDL, gender)) + geom_boxplot(color = "red")
+
+#Boxplot of age and gender
+ggplot(LDL, aes(age, gender)) + geom_boxplot(color = "dark green")
+
+#Boxplot of LDL and fastfood 
+ggplot(LDL, aes(LDL, fastfood)) + geom_boxplot(color = 'blue')
+
+#Boxplot of age and LDL coloured for fastfood
+ggplot(LDL, aes(LDL, age, color = fastfood)) + geom_boxplot()
+
+#Boxplot of age and fastfood coloured for gender
+ggplot(LDL, aes(age, fastfood, color = gender)) + geom_boxplot()
+```
+
+```{r}
+# boxplot and scatter plot of LDL & age with two different gender shown
+# ggplot(LDL, aes(fastfood, LDL, color = gender)) + geom_boxplot()
+ggplot(LDL, aes(age, LDL, color = gender)) + geom_point()
+# boxplot and scatter plot of LDL & age with two different fastfood consumption shown
+# ggplot(LDL, aes(age, LDL, color = fastfood)) + geom_boxplot()
+ggplot(LDL, aes(age, LDL, color = fastfood)) + geom_point()
+```
+
+From the above plots, notice how the age affects LDL. Even those who often 
+eat fast-food at young age have lower LDL than old people rarely eat fast-food.
+
+```{r}
+# CORRELATION BETWEEN AGE & LDL
+cor(LDL$age,LDL$LDL)
+# ggplot(LDL, aes(age, LDL)) + geom_point()
+# interactive scatter plot of LDL & age with two different fastfood consumption shown
+scatter.age.diet <- ggplot(LDL, aes(age, LDL, color = fastfood)) + geom_point()
+# ggplotly(scatter.age.diet)
+# interactive scatter plot of LDL & age with two different fastfood consumption shown
+scatter.age.gend <- ggplot(LDL, aes(age, LDL, color = gender)) + geom_point()
+# ggplotly(scatter.age.gend)
+```
+
+# LINEAR REGRESSION ANALYSIS
+
+Fit the first linear model for LDL and fastfood comsumption. As the 
+regressor (fastfood consumption) is a categorical variable, we created a dummy 
+variable for the two fastfood categories ('Often' and 'Rarely').
+
+```{r}
+# PREPARE DATA FOR REGRESSIONS
+# dummify the fastfood categories
+# fastfood often group = 0; fastfood rarely group = 1
+# gender man = 0 ; gender woman = 1
+LDL_survey <- dummy.data.frame(LDL)
+dist_survey <- dist(LDL_survey,method='binary')
+# glimpse(dist_survey)
+# glimpse(LDL)
+```
+
+```{r}
+# MODEL 1 TO FIT IN REGRESSIONS: LDL ~ diet
+fastfood.model <- lm(LDL ~ fastfoodrarely + fastfoodoften, data = LDL_survey)
+# we found that beta0 = 123.855, Beta1 = 3.220
+summary(fastfood.model)
+# t-value is 0.823 and pvalue = 0.415. verified below
+t.obs.fastfood.model <- 3.220 / 3.911
+t.obs.fastfood.model #0.8233188
+#2 tails p-value
+2*(1-pt(abs(t.obs.fastfood.model), df = 38))
+#calculate the CI of fastfood.model
+confint(fastfood.model)
+```
+
+Fit the second linear model for LDL and age:
+
+```{r}
+# MODEL 2 TO FIT IN REGRESSION: LDL ~ age
+age_LDL.model <- lm(LDL ~ age, data = LDL_survey)
+# we found that beta 0 = 90.0200, beta1 = 0.6248
+summary(age_LDL.model)
+# t-value is
+t.obs.age_LDL.model <- 0.48261 / 0.09914
+# 2 tails p-value
+2*(1-pt(abs(t.obs.age_LDL.model), df = 37))
+# calculate the CI
+confint(age_LDL.model)
+```
+
+```{r}
+# MODEL 3 TO FIT IN REGRESSIONS: LDL ~ gender
+gender.model <- lm(LDL ~ genderwoman + genderman, data = LDL_survey)
+# we found that beta0 = 123.855, Beta1 = 3.220
+summary(gender.model)
+# t-value is -0.781 and pvalue = 0.44. verified below
+t.obs.gender.model <- -3.072 / 3.934
+t.obs.gender.model #-0.7808846
+#2 tails p-value
+2*(1-pt(abs(t.obs.fastfood.model), df = 38))
+#calculate the CI of fastfood.model
+confint(gender.model)
+```
+
+Even though gender seems to have no association with fastfood consumption, 
+it is represented here for explanatory purposes only: the fourth linear model for LDL, 
+age and fast-food, gender. Dummy variables were used to convert gender to a quantitative variable.
+
+```{r}
+# MODEL 4 TO FIT IN REGRESSION: LDL ~ diet + gender + age 
+diet_gender_age.interaction.model <- lm(LDL ~ fastfoodrarely * fastfoodoften * genderman * genderwoman * age, data = LDL_survey)
+# beta
+summary(diet_gender_age.interaction.model)
+# t-value and pvalue
+t.obs.diet_gender_age.model <- -16.6374/15.8454
+t.obs.diet_gender_age.model #-1.049983
+# 2 tails p-value
+2*(1-pt(abs(t.obs.diet_gender_age.model), df = 32))
+# calculate the CI of fastfood.model
+confint(diet_gender_age.interaction.model)
+```
+
+**For the model assumption, we're representing the best model which is the one of LSL and fastfood consumption and age.** 
+It was assumed the data had no error in measurement.
+
+Residual plots were tested to see if the model met the assumptions of linearity, 
+normality of the error term (using the normal Q-Q plot of residuals) and homoskedasticity. 
+The normal QQ-plot of the residuals of the LDL reveals systematic deviations from the straight line. 
+There is a small number of outliers (3 compared to the sample size of 40), however, the normality would be improved if we increase the sample size.
+
+```{r}
+# MODEL ASSUMPTION: LDL ~ diet + age 
+age_diet.model <- lm(LDL ~ age + fastfoodoften + fastfoodrarely, data = LDL_survey )
+```
+
+```{r}
+summary(age_diet.model)
+age_diet.residuals <- residuals(age_diet.model)
+Yhat_age_diet <- predict(age_diet.model)
+```
+
+The below plots show that residuals follow the normal distribution.
+
+```{r}
+# QQ plot 1 age and diet residuals
+ggplot(LDL_survey, aes(sample = age_diet.residuals)) + 
+  stat_qq() +
+  stat_qq_line(col = "red") + 
+  labs(x = "Theoretical Residuals", y = "Sample Residuals") + 
+  ggtitle("QQ Plot: Age and Diet Residuals")
+```
+
+```{r}
+# density plot for ldl, age, and diet residuals 
+plot(density(age_diet.residuals)) 
+```
+
+Below shows a plot for the fitted values vs the residuals, which can indicate if there is homoskedasticity in the model. 
+The plot shows that there is somewhat of an increase in spread of fitted values vs residuals and the spread isn't complete constant.
+
+```{r}
+# Plot of fitted values vs residuals. 
+age_diet.model <- lm(LDL ~ age + fastfoodoften + fastfoodrarely, data = LDL_survey )
+plot(age_diet.model)
+```
+
+```{r}
+# test interaction age - diet
+two.way.interaction.model <- lm(LDL ~ age + fastfoodrarely + fastfoodoften +
+                 age * fastfoodoften +
+                 age * fastfoodrarely,
+                 data = LDL_survey)
+summary(two.way.interaction.model)
+#interaction analysis
+coef(two.way.interaction.model)
+#Confidence intervals
+confint(two.way.interaction.model)
+#QQ plot of two way interaction model's residuals (age* fastfood)
+two_way_interaction.residuals <- residuals(two.way.interaction.model)
+Yhat_two_way_interaction <- predict(two.way.interaction.model)
+ggplot(LDL_survey, aes(sample = two_way_interaction.residuals)) +
+ stat_qq() +
+ stat_qq_line(col = "red") +
+ labs(x = "Theoretical Residuals", y = "Sample Residuals") +
+ ggtitle("QQ Plot: Two Way Interaction Residuals")
+```
+
+The above explanatory data analysis demonstrates that for the response variable LDL levels, 
+in those who respectively reported consuming a fastfood diet of 'often' or 'rarely', 
+illustrated that for the two blocking variables of age and gender, gender was not a significant variable. 
+The best model recommended here would be between LDL and age, fastfood.
+
+# II. DISCUSSION (for other researchers)
+
+Several factors are known to contribute to increased LDL levels. 
+Previous studies have confirmed the association between frequent fast food 
+consumption with increased LDL cholesterol [1,6]. Gender differences have also 
+been found to exist between LDL cholesterol concentrations and subsequent mortality 
+from coronary heart disease [2]. Moreover, it is important to note that LDL cholesterol 
+also increases with normal aging in humans [3-6]. 
+
+The majority of subjects were men with a higher mean age compared to women (47 vs 44 years). 
+The age range of the group was between 20 and 72 years old. Men ate fast food more often 
+compared to women, although this association was not significant (p=0.056). 
+Those who ate fast food often also tended to be younger (Table 1) and had lower mean 
+LDL levels than those who rarely ate fast food. Interestingly, the mean LDL levels 
+for the whole sample were higher than the recommended level of <100mg/100ml (Table 2).
+
+Table 1. Diet category by mean age (N=40)
+
+**Age**     | **Fast-food consumption**
+-------------|---------------
+Freq         | Often Rarely All
+Mean (yrs)  | 36.45 54.15 45.30
+
+Table 2. Mean LDL blood levels by diet and gender
+
+--- | N(%) | LDL Mean (SD)
+--- | --- | ---
+**Fast-food** | --- | ---
+Often | 20 (50) | 120.6 (13.0)
+Rarely | 20 (50) | 123.9 (11.7)
+**Gender** | --- | ---
+Woman | 18 (45) | 120.6 (12.6)
+Man | 22 (55) | 123.6 (12.2)
+All | 40 (100) | 122.2 (12.3)
+
+
+Simple regression analysis
+
+The analysis (from model LDL ~ diet) suggests that subjects who rarely consume fast food will have an increased LDL level of 3.2 mg/100ml. However, this was found to be not significant (p = 0.415) with a low R-squared value of 0.018. That is, fast food consumption alone is not a good predictor of LDL levels. xx Similarly, a simple regression analysis of LDL ~ gender was also found to be not significant (p = 0.44) with an R-squared value of 0.0158.However, the data does suggest that women have lower LDL levels than men. 
+
+On the contrary, the regression model analysis between LDL and age found a significant relationship (p = 0.00002 or <0.001). For every year increase in age, LDL is estimated to increase by 0.48 mg/100ml. This linear relationship explains about 38% of the variance of LDL blood levels.
+
+Multiple regression analysis
+
+Gender was not found to be a significant predictor of LDL levels in our bivariate analysis. However, we explored the predictive power of age, gender and diet on LDL levels. In this model, none of the independent variables were significant (R-squared 0.5049, p = 0.0011).   
+
+Our second multiple linear regression model including age and diet to estimate the LDL level was able to explain 45% the variance of LDL blood levels. Both age and diet showed significant linear relationships with LDL levels (p = 0.000003 and p = 0.03, respectively). At the 5% level of significance, if age increases with 1 unit then LDL is estimated to increase by 0.62 mg/100ml. At the same time, if the subject is often consuming fast food, LDL is estimated to increase by 7.84 mg/100ml. In this model, age and diet are able to uniquely predict the variance of LDL levels after controlling for their relationship with each other. This is the model that we would recommend.
+
+**Only 45% of the variance of LDL blood levels was able to be explained by age and fastfood consumption diet. LDL levels were significantly associated with age and a diet that often includes fast food.** Previous studies suggested that there are other factors which affect the LDL blood levels, such as dietary cholesterol intake, other dietary and lifestyle factors [7] as well as the BMI in lean individuals [8]. The study’s small sample size, lack of information regarding the selection of the 40 subjects and limited information on the participants could be potential sources of bias. Other factors which affect LDL levels were not able to be included in the analyses, e.g. overweight/obesity, exercise levels, smoking, medications, diabetes [7,8]. Future research should include a larger sample size, more information on the baseline characteristics of subjects and a more detailed diet questionnaire.
+
+
+
+**References**
+
+1.	Duffey KJ, Gordon-Larsen P, Steffen LM, Jacobs DR Jr, Popkin BM. Regular consumption from fast food establishments relative to other restaurants is differentially associated with metabolic outcomes in young adults. J Nutr. 2009 Nov;139(11):2113-8. doi: 10.3945/jn.109.109520. Epub 2009 Sep 23. PMID: 19776183; PMCID: PMC2762152.
+2.	Noda, H., Iso, H., Irie, F., Sairenchi, T., Ohtaka, E. and Ohta, H. (2010), Gender difference of association between LDL cholesterol concentrations and mortality from coronary heart disease amongst Japanese: the Ibaraki Prefectural Health Study. Journal of Internal Medicine, 267: 576-587. https://doi.org/10.1111/j.1365-2796.2009.02183.x
+3.	S. Ericsson, M. Eriksson, S. Vitols, K. Einarsson, L. Berglund, and B. Angelin, “Influence of age on the metabolism of plasma low density lipoproteins in healthy males,” Journal of Clinical Investigation, vol. 87, no. 2, pp. 591–596, 1991.
+4.	S. Ericsson, L. Berglund, J. Frosteg°ard, K. Einarsson, and B. Angelin, “The influence of age on low density lipoprotein metabolism: effects of cholestyramine treatment in young and old healthy male subjects,” Journal of Internal Medicine, vol. 242, no. 4, pp. 329–337, 1997.
+5.	S. M. Grundy, G. L. Vega, and D. W. Bilheimer, “Kinetic mechanisms determining variability in low density lipoprotein levels and rise with age,” Arteriosclerosis, vol. 5, no. 6, pp.623–630, 1985.
+6.	Uranga, R. M., & Keller, J. N. (2010). Diet and age interactions with regards to cholesterol regulation and brain pathogenesis. Current gerontology and geriatrics research, 2010, 219683. https://doi.org/10.1155/2010/219683.
+7.	Kanter, M. M., Kris-Etherton, P. M., Fernandez, M. L., Vickers, K. C., & Katz, D. L. (2012). Exploring the factors that affect blood cholesterol and heart disease risk: is dietary cholesterol as bad for you as history leads us to believe?. Advances in nutrition (Bethesda, Md.), 3(5), 711–717. https://doi.org/10.3945/an.111.001321
+8.	Laclaustra M, Lopez-Garcia E, Civeira F, Garcia-Esquinas E, Graciani A, Guallar-Castillon P, Banegas JR, Rodriguez-Artalejo F. LDL Cholesterol Rises With BMI Only in Lean Individuals: Cross-sectional U.S. and Spanish Representative Data. Diabetes Care. 2018 Oct;41(10):2195-2201. doi: 10.2337/dc18-0372. Epub 2018 Jul 30. PMID: 30061315.
